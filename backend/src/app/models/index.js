@@ -10,7 +10,9 @@ let sequelize;
 
 if (process.env.DATABASE_URL) {
   // PRODUCTION: Direct connection to Neon PostgreSQL
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
+  // Strip ?sslmode=... from URL to avoid conflict with dialectOptions.ssl
+  const dbUrl = process.env.DATABASE_URL.split('?')[0];
+  sequelize = new Sequelize(dbUrl, {
     dialect: 'postgres',
     dialectOptions: {
       ssl: {
