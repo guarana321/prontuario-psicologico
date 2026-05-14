@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pacientes - Prontuário Psicológico</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/styles.css?v=3">
+    <link rel="stylesheet" href="css/styles.css?v=4">
     <style>
         .search-bar {
             width: 100%;
@@ -43,6 +43,32 @@
             background: #e0f2fe;
             color: #0369a1;
         }
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.35s ease;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        /* Override textarea height in patient form */
+        #patient-form textarea.form-control {
+            min-height: 90px;
+        }
     </style>
 </head>
 <body>
@@ -58,6 +84,9 @@
             </ul>
         </nav>
     </header>
+
+    <!-- Toast notification -->
+    <div id="toast">✅ Paciente salvo com sucesso!</div>
 
     <main class="container">
         <!-- Form to Add/Edit Patient -->
@@ -142,7 +171,7 @@
         </div>
     </main>
 
-    <script src="java/api.js?v=7"></script>
+    <script src="java/api.js?v=8"></script>
     <script>
         const formCard = document.getElementById('patient-form-card');
         const patientForm = document.getElementById('patient-form');
@@ -152,8 +181,16 @@
         const noResults = document.getElementById('no-results');
         const table = document.getElementById('patients-table');
         const countBadge = document.getElementById('count-badge');
+        const toast = document.getElementById('toast');
 
-        let allPatients = []; // store globally for search
+        let allPatients = [];
+
+        function showToast(msg = '\u2705 Paciente salvo com sucesso!', isError = false) {
+            toast.textContent = msg;
+            toast.style.background = isError ? 'var(--danger-color)' : 'var(--success-color)';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        } // store globally for search
 
         // Check if URL asks to open form
         const urlParams = new URLSearchParams(window.location.search);
@@ -268,7 +305,10 @@
 
             if (success) {
                 toggleForm(false);
-                loadPatients();
+                await loadPatients();
+                showToast(id ? '\u2705 Paciente atualizado com sucesso!' : '\u2705 Paciente cadastrado com sucesso!');
+            } else {
+                showToast('\u274c Erro ao salvar. Verifique os dados e tente novamente.', true);
             }
         });
 
