@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacientes - Prontuário Psicológico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=3">
+    <style>
+        .search-bar {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 1.25rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+            color: var(--text-main);
+        }
+        .search-bar:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 1.5rem;
+        }
+        .form-grid .form-group.full {
+            grid-column: 1 / -1;
+        }
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.55rem;
+            border-radius: 99px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            PsychoRecord
+        </h1>
+        <nav>
+            <ul>
+                <li><a href="index">Dashboard</a></li>
+                <li><a href="patients" class="active">Pacientes</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <!-- Form to Add/Edit Patient -->
+        <div class="card fade-in" id="patient-form-card" style="display: none;">
+            <div class="card-header">
+                <h2 class="card-title" id="form-title">Novo Paciente</h2>
+                <button class="btn btn-outline" onclick="toggleForm()">Cancelar</button>
+            </div>
+            <form id="patient-form">
+                <input type="hidden" id="patient-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="nome">Nome Completo *</label>
+                        <input type="text" id="nome" class="form-control" required placeholder="Nome do paciente">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="email">E-mail *</label>
+                        <input type="email" id="email" class="form-control" required placeholder="email@exemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="data_nascimento">Data de Nascimento</label>
+                        <input type="date" id="data_nascimento" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="idade">Idade</label>
+                        <input type="number" id="idade" class="form-control" placeholder="Ex: 32" min="0" max="150">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="telefone">Telefone / WhatsApp</label>
+                        <input type="tel" id="telefone" class="form-control" placeholder="(00) 00000-0000">
+                    </div>
+                    <div class="form-group full">
+                        <label class="form-label" for="observacoes">Observações Gerais</label>
+                        <textarea id="observacoes" class="form-control" rows="3" placeholder="Motivo da consulta, histórico relevante..."></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar Paciente</button>
+            </form>
+        </div>
+
+        <!-- Patients List -->
+        <div class="card fade-in">
+            <div class="card-header">
+                <h2 class="card-title">Lista de Pacientes <span class="badge" id="count-badge">0</span></h2>
+                <button class="btn btn-primary" onclick="toggleForm(true)" id="btn-novo">+ Novo Paciente</button>
+            </div>
+
+            <input
+                type="text"
+                id="search-input"
+                class="search-bar"
+                placeholder="🔍 Pesquisar paciente pelo nome ou e-mail..."
+                oninput="filterPatients(this.value)"
+            >
+            
+            <div class="table-container">
+                <table id="patients-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Telefone</th>
+                            <th>Nascimento</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patients-list">
+                        <!-- Populated via JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <i>📋</i>
+                <p>Nenhum paciente cadastrado ainda.</p>
+            </div>
+            <div id="no-results" class="empty-state" style="display: none;">
+                <i>🔍</i>
+                <p>Nenhum paciente encontrado para esta pesquisa.</p>
+            </div>
+        </div>
+    </main>
+
+    <script src="java/api.js?v=7"></script>
+    <script>
+        const formCard = document.getElementById('patient-form-card');
+        const patientForm = document.getElementById('patient-form');
+        const formTitle = document.getElementById('form-title');
+        const patientsList = document.getElementById('patients-list');
+        const emptyState = document.getElementById('empty-state');
+        const noResults = document.getElementById('no-results');
+        const table = document.getElementById('patients-table');
+        const countBadge = document.getElementById('count-badge');
+
+        let allPatients = []; // store globally for search
+
+        // Check if URL asks to open form
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'new') toggleForm(true);
+
+        function toggleForm(show = false, patient = null) {
+            if (show) {
+                formCard.style.display = 'block';
+                if (patient) {
+                    formTitle.textContent = 'Editar Paciente';
+                    document.getElementById('patient-id').value = patient.id;
+                    document.getElementById('nome').value = patient.Nome || '';
+                    document.getElementById('email').value = patient.email || '';
+                    document.getElementById('idade').value = patient.Idade || '';
+                    document.getElementById('telefone').value = patient.telefone || '';
+                    document.getElementById('data_nascimento').value = patient.data_nascimento || '';
+                    document.getElementById('observacoes').value = patient.observacoes || '';
+                } else {
+                    formTitle.textContent = 'Novo Paciente';
+                    patientForm.reset();
+                    document.getElementById('patient-id').value = '';
+                }
+                formCard.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                formCard.style.display = 'none';
+                patientForm.reset();
+            }
+        }
+
+        function renderPatients(patients) {
+            patientsList.innerHTML = '';
+            noResults.style.display = 'none';
+
+            if (patients.length === 0 && allPatients.length === 0) {
+                table.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            if (patients.length === 0) {
+                table.style.display = 'none';
+                noResults.style.display = 'block';
+                return;
+            }
+
+            table.style.display = 'table';
+            emptyState.style.display = 'none';
+
+            patients.forEach(patient => {
+                const nascimento = patient.data_nascimento
+                    ? new Date(patient.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+                    : '—';
+                const telefone = patient.telefone || '—';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>#${patient.id}</td>
+                    <td style="font-weight: 500;">${patient.Nome}</td>
+                    <td style="color: var(--text-light);">${patient.email}</td>
+                    <td style="color: var(--text-light);">${telefone}</td>
+                    <td style="color: var(--text-light);">${nascimento}</td>
+                    <td class="actions">
+                        <a href="medical_record?id=${patient.id}&v=7" class="btn btn-outline" style="padding: 0.25rem 0.5rem;">Sessões</a>
+                        <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick='editPatient(${JSON.stringify(patient)})'>Editar</button>
+                        <button class="btn btn-danger" style="padding: 0.25rem 0.5rem;" onclick="removePatient(${patient.id})">Excluir</button>
+                    </td>
+                `;
+                patientsList.appendChild(tr);
+            });
+        }
+
+        function filterPatients(query) {
+            const q = query.toLowerCase().trim();
+            if (!q) {
+                renderPatients(allPatients);
+                return;
+            }
+            const filtered = allPatients.filter(p =>
+                (p.Nome && p.Nome.toLowerCase().includes(q)) ||
+                (p.email && p.email.toLowerCase().includes(q)) ||
+                (p.telefone && p.telefone.toLowerCase().includes(q))
+            );
+            renderPatients(filtered);
+        }
+
+        async function loadPatients() {
+            allPatients = await getPatients();
+
+            // Sort by newest first (highest id)
+            allPatients.sort((a, b) => b.id - a.id);
+
+            countBadge.textContent = allPatients.length;
+            renderPatients(allPatients);
+        }
+
+        patientForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('patient-id').value;
+            const nome = document.getElementById('nome').value;
+            const email = document.getElementById('email').value;
+            const idade = document.getElementById('idade').value;
+            const telefone = document.getElementById('telefone').value;
+            const data_nascimento = document.getElementById('data_nascimento').value;
+            const observacoes = document.getElementById('observacoes').value;
+
+            let success;
+            if (id) {
+                success = await updatePatient(id, nome, email, idade, telefone, data_nascimento, observacoes);
+            } else {
+                success = await createPatient(nome, email, idade, telefone, data_nascimento, observacoes);
+            }
+
+            if (success) {
+                toggleForm(false);
+                loadPatients();
+            }
+        });
+
+        window.editPatient = (patient) => toggleForm(true, patient);
+
+        window.removePatient = async (id) => {
+            if (confirm('Tem certeza que deseja excluir este paciente? Isso apagará também todas as sessões.')) {
+                const success = await deletePatient(id);
+                if (success) loadPatients();
+            }
+        };
+
+        loadPatients();
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prontuário - PsychoRecord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css?v=2">
+</head>
+<body>
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            PsychoRecord
+        </h1>
+        <nav>
+            <ul>
+                <li><a href="index">Dashboard</a></li>
+                <li><a href="patients" class="active">Pacientes</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        
+        <div class="flex items-center gap-2 mb-4">
+            <a href="patients" class="btn btn-outline">← Voltar</a>
+            <h2 style="font-size: 1.5rem; color: var(--primary-color);">Prontuário do Paciente</h2>
+        </div>
+
+        <div class="card fade-in">
+            <div class="card-header">
+                <h3 class="card-title" id="patient-name">Carregando...</h3>
+                <span id="patient-email" style="color: var(--text-light);"></span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; align-items: start;">
+                
+                <!-- Nova Sessão -->
+                <div>
+                    <h4 style="margin-bottom: 1rem; color: var(--text-main);">Nova Sessão</h4>
+                    <form id="session-form">
+                        <div class="form-group">
+                            <label class="form-label" for="data_sessao">Data (Opcional)</label>
+                            <input type="date" id="data_sessao" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="anotacoes">Anotações da Sessão</label>
+                            <textarea id="anotacoes" class="form-control" required placeholder="Escreva os detalhes e observações da sessão aqui..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Salvar Registro</button>
+                    </form>
+                </div>
+
+                <!-- Histórico de Sessões -->
+                <div style="overflow: hidden;">
+                    <h4 style="margin-bottom: 1rem; color: var(--text-main);">Histórico de Sessões</h4>
+                    <div id="sessions-list">
+                        <!-- Populated via JS -->
+                    </div>
+                    <div id="empty-state" class="empty-state" style="display: none; padding: 2rem 1rem;">
+                        <i>📝</i>
+                        <p>Nenhuma sessão registrada para este paciente.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <script src="java/api.js?v=6"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const pacienteId = urlParams.get('id');
+
+        const patientNameEl = document.getElementById('patient-name');
+        const patientEmailEl = document.getElementById('patient-email');
+        const sessionForm = document.getElementById('session-form');
+        const sessionsList = document.getElementById('sessions-list');
+        const emptyState = document.getElementById('empty-state');
+
+        async function loadData() {
+            if (!pacienteId || pacienteId === 'null') {
+                patientNameEl.innerHTML = `<span style="color:red; font-size:1.5rem;">⚠️ ACESSO INVÁLIDO</span>`;
+                patientEmailEl.innerHTML = `<br><b style="color:red; font-size:1.1rem;">Você não pode abrir esta página diretamente! Volte para a aba "Pacientes" e clique no botão "Sessões" do paciente desejado.</b>`;
+                document.querySelector('.container .card > div:nth-child(2)').style.display = 'none'; // Esconde a grade do form e histórico
+                return;
+            }
+
+            // Load Patient Info
+            const patient = await getPatient(pacienteId);
+            if (patient) {
+                patientNameEl.textContent = patient.Nome;
+                patientEmailEl.textContent = patient.email;
+            } else {
+                patientNameEl.textContent = "Paciente não encontrado";
+            }
+
+            // Load Sessions
+            const sessions = await getSessions(pacienteId);
+            sessionsList.innerHTML = '';
+
+            if (sessions.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+                
+                // Garantir que as mais novas (maior data de criação) fiquem no topo
+                const sortedSessions = sessions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                
+                sortedSessions.forEach(sessao => {
+                    const date = new Date(sessao.data_sessao);
+                    const formattedDate = date.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) + ' ' + (date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) !== '00:00' ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+                    
+                    const a = document.createElement('a');
+                    a.href = `session_detail?id=${sessao.id}&paciente=${pacienteId}&v=6`;
+                    a.className = 'session-card fade-in';
+                    a.style.display = 'flex';
+                    a.style.flexDirection = 'column';
+                    a.style.gap = '0.5rem';
+                    a.innerHTML = `
+                        <div style="font-weight: 600; font-size: 0.9rem; color: var(--primary-color); margin-bottom: 0.25rem;">Sessão de ${formattedDate.split(' ')[0]}</div>
+                        <div style="font-size: 0.82rem; color: var(--text-light); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${sessao.anotacoes}</div>
+                    `;
+                    sessionsList.appendChild(a);
+                });
+            }
+        }
+
+        sessionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!pacienteId) return;
+            const data_sessao = document.getElementById('data_sessao').value;
+            const anotacoes = document.getElementById('anotacoes').value;
+
+            const success = await createSession(pacienteId, data_sessao, anotacoes);
+            
+            if (success) {
+                alert("Sessão salva com sucesso!");
+                sessionForm.reset();
+                loadData();
+            }
+        });
+
+        loadData();
+    </script>
+</body>
+</html>

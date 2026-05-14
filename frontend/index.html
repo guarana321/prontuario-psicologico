@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prontuário Psicológico - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            PsychoRecord
+        </h1>
+        <nav>
+            <ul>
+                <li><a href="index" class="active">Dashboard</a></li>
+                <li><a href="patients">Pacientes</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container">
+        <div class="card fade-in">
+            <div class="card-header">
+                <h2 class="card-title">Visão Geral</h2>
+            </div>
+            <p>Bem-vindo ao sistema de Prontuário Psicológico. Use o menu acima para gerenciar seus pacientes e registrar as sessões de atendimento.</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 2rem;">
+                
+                <div class="card" style="margin-bottom: 0;">
+                    <h3 style="color: var(--text-light); font-size: 0.875rem; text-transform: uppercase;">Total de Pacientes</h3>
+                    <p id="total-patients" style="font-size: 2.5rem; font-weight: 700; color: var(--primary-color);">0</p>
+                    <a href="patients" class="btn btn-outline mt-4">Ver Pacientes</a>
+                </div>
+
+                <div class="card" style="margin-bottom: 0;">
+                    <h3 style="color: var(--text-light); font-size: 0.875rem; text-transform: uppercase;">Ação Rápida</h3>
+                    <p style="margin-top: 0.5rem; color: var(--text-main);">Cadastre um novo paciente para iniciar o acompanhamento.</p>
+                    <a href="patients?action=new" class="btn btn-primary mt-4">+ Novo Paciente</a>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="java/api.js?v=7"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const patients = await getPatients();
+            document.getElementById('total-patients').textContent = patients.length || 0;
+        });
+    </script>
+</body>
+</html>

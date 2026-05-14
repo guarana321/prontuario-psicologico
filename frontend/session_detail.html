@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sessão - PsychoRecord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .editor-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .editor-textarea {
+            width: 100%;
+            min-height: 60vh;
+            padding: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background-color: var(--surface-color);
+            color: var(--text-main);
+            resize: vertical;
+            box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+        }
+        .editor-textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .metadata {
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            PsychoRecord
+        </h1>
+        <nav>
+            <ul>
+                <li><a href="index">Dashboard</a></li>
+                <li><a href="patients">Pacientes</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="container editor-container fade-in">
+        <div class="flex items-center gap-2 mb-4">
+            <a id="btn-voltar" href="#" class="btn btn-outline">← Voltar para o Prontuário</a>
+        </div>
+
+        <div id="error-message" style="display: none; padding: 2rem; text-align: center; color: red;">
+            <h2>⚠️ ACESSO INVÁLIDO</h2>
+            <p>ID da sessão não fornecido na URL.</p>
+        </div>
+
+        <form id="editor-form" style="display: none;">
+            <div class="editor-header">
+                <div>
+                    <h2 style="font-size: 1.5rem; color: var(--primary-color);">Registro de Sessão</h2>
+                    <div class="metadata" id="session-metadata">Carregando...</div>
+                </div>
+                <div class="flex gap-2">
+                    <input type="date" id="data_sessao" class="form-control" style="width: auto;">
+                    <button type="submit" class="btn btn-primary" id="btn-save">Salvar Alterações</button>
+                </div>
+            </div>
+
+            <textarea id="anotacoes" class="editor-textarea" placeholder="Digite as anotações da sessão aqui..."></textarea>
+        </form>
+    </main>
+
+    <script src="java/api.js?v=6"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('id');
+        const pacienteId = urlParams.get('paciente');
+
+        const errorMessage = document.getElementById('error-message');
+        const editorForm = document.getElementById('editor-form');
+        const btnVoltar = document.getElementById('btn-voltar');
+        const metadataEl = document.getElementById('session-metadata');
+        const dataSessaoInput = document.getElementById('data_sessao');
+        const anotacoesInput = document.getElementById('anotacoes');
+        const btnSave = document.getElementById('btn-save');
+
+        // Configura o botão de voltar
+        if (pacienteId) {
+            btnVoltar.href = `medical_record?id=${pacienteId}`;
+        } else {
+            btnVoltar.href = 'patients';
+        }
+
+        async function loadSession() {
+            if (!sessionId || sessionId === 'null') {
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            editorForm.style.display = 'block';
+
+            const sessao = await getSession(sessionId);
+            if (!sessao) {
+                metadataEl.textContent = "Sessão não encontrada.";
+                return;
+            }
+
+            const date = new Date(sessao.data_sessao);
+            
+            // Format for display
+            const displayDate = date.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) + ' ' + (date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) !== '00:00' ? date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+            metadataEl.textContent = `Registrado em: ${displayDate}`;
+
+            // Format for input value (YYYY-MM-DD)
+            const inputDateString = date.toISOString().split('T')[0];
+            dataSessaoInput.value = inputDateString;
+
+            // Fill text
+            anotacoesInput.value = sessao.anotacoes;
+        }
+
+        editorForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            btnSave.textContent = "Salvando...";
+            btnSave.disabled = true;
+
+            const novaData = dataSessaoInput.value;
+            const novasAnotacoes = anotacoesInput.value;
+
+            const success = await updateSession(sessionId, novaData, novasAnotacoes);
+
+            if (success) {
+                alert("Alterações salvas com sucesso!");
+                // Recarrega para mostrar a data atualizada no metadata
+                loadSession(); 
+            }
+
+            btnSave.textContent = "Salvar Alterações";
+            btnSave.disabled = false;
+        });
+
+        loadSession();
+    </script>
+</body>
+</html>
