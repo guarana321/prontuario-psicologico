@@ -3,19 +3,15 @@
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
-const process = require('process');
 const basename = path.basename(__filename);
-const env = process.env.NODE_ENV || 'development';
-const config = require('../../config/database.js')[env];
 const db = {};
 
 let sequelize;
-if (config.use_env_variable) {
-  // Production: connect using DATABASE_URL with explicit SSL for Neon
-  const dbUrl = process.env[config.use_env_variable];
-  sequelize = new Sequelize(dbUrl, {
+
+if (process.env.DATABASE_URL) {
+  // PRODUCTION: Direct connection to Neon PostgreSQL
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
-    protocol: 'postgres',
     dialectOptions: {
       ssl: {
         require: true,
@@ -25,14 +21,13 @@ if (config.use_env_variable) {
     logging: false
   });
 } else {
-  sequelize = new Sequelize(
-    config.database,
-    config.username,
-    config.password,
-    config
-  );
+  // DEVELOPMENT: Local PostgreSQL
+  sequelize = new Sequelize('prontuario1', 'postgres', 'postgres', {
+    host: 'localhost',
+    dialect: 'postgres',
+    logging: false
+  });
 }
-
 
 fs
   .readdirSync(__dirname)
