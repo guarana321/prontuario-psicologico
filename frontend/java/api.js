@@ -1,7 +1,7 @@
 // Auto-detect environment: localhost in dev, Render URL in production
 const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:3333'
-  : 'https://prontuario-backend.onrender.com';
+  : 'https://prontuario-backend-4rgw.onrender.com';
 
 // Fetch all patients
 async function getPatients() {
