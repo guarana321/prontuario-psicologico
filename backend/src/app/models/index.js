@@ -11,7 +11,19 @@ const db = {};
 
 let sequelize;
 if (config.use_env_variable) {
-  sequelize = new Sequelize(process.env[config.use_env_variable], config);
+  // Production: connect using DATABASE_URL with explicit SSL for Neon
+  const dbUrl = process.env[config.use_env_variable];
+  sequelize = new Sequelize(dbUrl, {
+    dialect: 'postgres',
+    protocol: 'postgres',
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    },
+    logging: false
+  });
 } else {
   sequelize = new Sequelize(
     config.database,
