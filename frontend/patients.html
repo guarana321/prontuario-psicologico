@@ -123,7 +123,7 @@
                         <textarea id="observacoes" class="form-control" rows="3" placeholder="Motivo da consulta, histórico relevante..."></textarea>
                     </div>
                 </div>
-                <button type="submit" class="btn btn-primary">Salvar Paciente</button>
+                <button type="button" class="btn btn-primary" onclick="salvarPaciente()">Salvar Paciente</button>
             </form>
         </div>
 
@@ -185,18 +185,17 @@
 
         let allPatients = [];
 
-        function showToast(msg = '\u2705 Paciente salvo com sucesso!', isError = false) {
+        // ---- Toast notification ----
+        function showToast(msg, isError = false) {
             toast.textContent = msg;
             toast.style.background = isError ? 'var(--danger-color)' : 'var(--success-color)';
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3500);
-        } // store globally for search
+        }
 
-        // Check if URL asks to open form
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('action') === 'new') toggleForm(true);
-
-        function toggleForm(show = false, patient = null) {
+        // ---- Show/hide form ----
+        function toggleForm(show, patient) {
+            show = show || false;
             if (show) {
                 formCard.style.display = 'block';
                 if (patient) {
@@ -220,11 +219,12 @@
             }
         }
 
+        // ---- Render patient rows ----
         function renderPatients(patients) {
             patientsList.innerHTML = '';
             noResults.style.display = 'none';
 
-            if (patients.length === 0 && allPatients.length === 0) {
+            if (allPatients.length === 0) {
                 table.style.display = 'none';
                 emptyState.style.display = 'block';
                 return;
@@ -239,88 +239,111 @@
             table.style.display = 'table';
             emptyState.style.display = 'none';
 
-            patients.forEach(patient => {
-                const nascimento = patient.data_nascimento
+            patients.forEach(function(patient) {
+                var nascimento = patient.data_nascimento
                     ? new Date(patient.data_nascimento).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
                     : '—';
-                const telefone = patient.telefone || '—';
+                var telefone = patient.telefone || '—';
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>#${patient.id}</td>
-                    <td style="font-weight: 500;">${patient.Nome}</td>
-                    <td style="color: var(--text-light);">${patient.email}</td>
-                    <td style="color: var(--text-light);">${telefone}</td>
-                    <td style="color: var(--text-light);">${nascimento}</td>
-                    <td class="actions">
-                        <a href="medical_record?id=${patient.id}&v=7" class="btn btn-outline" style="padding: 0.25rem 0.5rem;">Sessões</a>
-                        <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick='editPatient(${JSON.stringify(patient)})'>Editar</button>
-                        <button class="btn btn-danger" style="padding: 0.25rem 0.5rem;" onclick="removePatient(${patient.id})">Excluir</button>
-                    </td>
-                `;
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td>#' + patient.id + '</td>' +
+                    '<td style="font-weight: 500;">' + patient.Nome + '</td>' +
+                    '<td style="color: var(--text-light);">' + patient.email + '</td>' +
+                    '<td style="color: var(--text-light);">' + telefone + '</td>' +
+                    '<td style="color: var(--text-light);">' + nascimento + '</td>' +
+                    '<td class="actions">' +
+                        '<a href="medical_record?id=' + patient.id + '" class="btn btn-outline" style="padding: 0.25rem 0.5rem;">Sessões</a>' +
+                        '<button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick=\'editPatient(' + JSON.stringify(patient) + ')\'>Editar</button>' +
+                        '<button class="btn btn-danger" style="padding: 0.25rem 0.5rem;" onclick="removePatient(' + patient.id + ')">Excluir</button>' +
+                    '</td>';
                 patientsList.appendChild(tr);
             });
         }
 
+        // ---- Search filter ----
         function filterPatients(query) {
-            const q = query.toLowerCase().trim();
+            var q = query.toLowerCase().trim();
             if (!q) {
                 renderPatients(allPatients);
                 return;
             }
-            const filtered = allPatients.filter(p =>
-                (p.Nome && p.Nome.toLowerCase().includes(q)) ||
-                (p.email && p.email.toLowerCase().includes(q)) ||
-                (p.telefone && p.telefone.toLowerCase().includes(q))
-            );
+            var filtered = allPatients.filter(function(p) {
+                return (p.Nome && p.Nome.toLowerCase().includes(q)) ||
+                       (p.email && p.email.toLowerCase().includes(q)) ||
+                       (p.telefone && p.telefone.toLowerCase().includes(q));
+            });
             renderPatients(filtered);
         }
 
+        // ---- Load all patients ----
         async function loadPatients() {
             allPatients = await getPatients();
-
-            // Sort by newest first (highest id)
-            allPatients.sort((a, b) => b.id - a.id);
-
+            allPatients.sort(function(a, b) { return b.id - a.id; });
             countBadge.textContent = allPatients.length;
             renderPatients(allPatients);
         }
 
-        patientForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('patient-id').value;
-            const nome = document.getElementById('nome').value;
-            const email = document.getElementById('email').value;
-            const idade = document.getElementById('idade').value;
-            const telefone = document.getElementById('telefone').value;
-            const data_nascimento = document.getElementById('data_nascimento').value;
-            const observacoes = document.getElementById('observacoes').value;
+        // ---- Form submit ----
+        window.salvarPaciente = async function() {
+            var id = document.getElementById('patient-id').value;
+            var nome = document.getElementById('nome').value.trim();
+            var email = document.getElementById('email').value.trim();
+            var idade = document.getElementById('idade').value;
+            var telefone = document.getElementById('telefone').value;
+            var data_nascimento = document.getElementById('data_nascimento').value;
+            var observacoes = document.getElementById('observacoes').value;
 
-            let success;
-            if (id) {
-                success = await updatePatient(id, nome, email, idade, telefone, data_nascimento, observacoes);
-            } else {
-                success = await createPatient(nome, email, idade, telefone, data_nascimento, observacoes);
+            if (!nome || !email) {
+                showToast('❌ Nome e E-mail são obrigatórios!', true);
+                return;
             }
+
+            var btn = document.querySelector('#patient-form button');
+            btn.textContent = 'Salvando...';
+            btn.disabled = true;
+
+            var success;
+            try {
+                if (id) {
+                    success = await updatePatient(id, nome, email, idade, telefone, data_nascimento, observacoes);
+                } else {
+                    success = await createPatient(nome, email, idade, telefone, data_nascimento, observacoes);
+                }
+            } catch(err) {
+                console.error('Erro ao salvar:', err);
+                success = null;
+            }
+
+            btn.textContent = 'Salvar Paciente';
+            btn.disabled = false;
 
             if (success) {
                 toggleForm(false);
                 await loadPatients();
-                showToast(id ? '\u2705 Paciente atualizado com sucesso!' : '\u2705 Paciente cadastrado com sucesso!');
+                showToast(id ? '✅ Paciente atualizado com sucesso!' : '✅ Paciente cadastrado com sucesso!');
             } else {
-                showToast('\u274c Erro ao salvar. Verifique os dados e tente novamente.', true);
-            }
-        });
-
-        window.editPatient = (patient) => toggleForm(true, patient);
-
-        window.removePatient = async (id) => {
-            if (confirm('Tem certeza que deseja excluir este paciente? Isso apagará também todas as sessões.')) {
-                const success = await deletePatient(id);
-                if (success) loadPatients();
+                showToast('❌ Erro ao salvar. E-mail pode já estar cadastrado.', true);
             }
         };
 
+        // ---- Global helpers for inline onclick ----
+        window.editPatient = function(patient) { toggleForm(true, patient); };
+        window.removePatient = async function(id) {
+            if (confirm('Tem certeza? Isso apagará também todas as sessões do paciente.')) {
+                var success = await deletePatient(id);
+                if (success) {
+                    await loadPatients();
+                    showToast('🗑️ Paciente excluído.');
+                }
+            }
+        };
+
+        // ---- Check URL action ----
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('action') === 'new') toggleForm(true);
+
+        // ---- Initial load ----
         loadPatients();
     </script>
 </body>
