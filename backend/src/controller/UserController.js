@@ -7,18 +7,15 @@ class UserController {
         const Idade = req.body.Idade !== '' && req.body.Idade != null ? parseInt(req.body.Idade) : null;
         const data_nascimento = req.body.data_nascimento || null;
 
-        if (!Nome || !email) {
-            return res.status(400).json({ error: 'Preencha todos os campos' });
-        }
-
         try {
-            const userAlreadyExists = await Pacientes.findOne({ where: { email } });
-
-            if (userAlreadyExists) {
-                return res.status(400).json({ error: 'Esse paciente ja existe' });
-            }
-
-            const paciente = await Pacientes.create({ Nome, email, Idade, telefone, data_nascimento, observacoes });
+            const paciente = await Pacientes.create({
+                Nome: Nome || null,
+                email: email || null,
+                Idade,
+                telefone: telefone || null,
+                data_nascimento,
+                observacoes: observacoes || null
+            });
 
             return res.status(201).json(paciente);
         } catch (error) {
