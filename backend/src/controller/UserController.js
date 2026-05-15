@@ -2,7 +2,10 @@ const { Pacientes } = require('../app/models');
 
 class UserController {
     async store(req, res) {
-        const { Nome, email, Idade, telefone, data_nascimento, observacoes } = req.body;
+        const { Nome, email, telefone, observacoes } = req.body;
+        // Convert empty strings to null for typed columns
+        const Idade = req.body.Idade !== '' && req.body.Idade != null ? parseInt(req.body.Idade) : null;
+        const data_nascimento = req.body.data_nascimento || null;
 
         if (!Nome || !email) {
             return res.status(400).json({ error: 'Preencha todos os campos' });
@@ -51,7 +54,10 @@ class UserController {
     async update(req, res) {
         try {
             const { id } = req.params;
-            const { Nome, email, Idade, telefone, data_nascimento, observacoes } = req.body;
+            const { Nome, email, telefone, observacoes } = req.body;
+            // Convert empty strings to null for typed columns
+            const Idade = req.body.Idade !== '' && req.body.Idade != null ? parseInt(req.body.Idade) : null;
+            const data_nascimento = req.body.data_nascimento || null;
 
             const paciente = await Pacientes.findByPk(id);
 
